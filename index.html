@@ -187,9 +187,9 @@ footer a { color: inherit; }
     <!-- step: pick -->
     <div id="pickView">
       <label class="drop" id="drop">
-        <input class="file-input" id="fileInput" type="file" accept="video/mp4,video/quicktime,.mp4,.mov">
+        <input class="file-input" id="fileInput" type="file" accept="video/*,.mp4,.mov,.m4v,.webm,.mkv">
         <span class="btn btn-primary" role="button">اختر فيديو</span>
-        <small>MP4 أو MOV بترميز H.264 · المقطع ما يطلع من جهازك</small>
+        <small>أي فيديو من جوالك، نحوّله تلقائيًا · المقطع ما يطلع من جهازك</small>
       </label>
     </div>
 
@@ -206,6 +206,7 @@ footer a { color: inherit; }
         <div id="runBox" style="display:flex;flex-direction:column;gap:10px">
           <button class="btn btn-primary" id="runBtn" type="button">جهّز الفيديو</button>
           <div class="progress" id="progress" hidden><div id="progressBar"></div></div>
+          <div class="status-line num-pct" id="progressLabel" hidden></div>
         </div>
       </div>
     </div>
@@ -244,15 +245,15 @@ footer a { color: inherit; }
     <div class="faq">
       <details>
         <summary>هل يتغير شكل الفيديو؟</summary>
-        <p>لا. البكسلات نفسها بدون إعادة ترميز. نعدّل بيانات الملف بس، فيقرأه تيك توك كمقطع 1080p بـ60 فريم ويضغطه أخف.</p>
+        <p>إذا كان المقطع جاهز، البكسلات نفسها بدون أي تحويل. وإذا احتاج تحويل، نحوّله بجودة عالية (12Mbps). بعدها نعدّل بيانات الملف عشان يقرأه تيك توك كمقطع 1080p بـ60 فريم ويضغطه أخف.</p>
       </details>
       <details>
         <summary>شغّلته على جوالي وطلع طوله غريب</summary>
         <p>طبيعي. بعض المشغلات تقرأ الفريمات المعلنة وتعرض مدة أطول أو تعلق في آخر المقطع. على تيك توك يطلع عادي.</p>
       </details>
       <details>
-        <summary>ليش يرفض فيديو الايفون؟</summary>
-        <p>كاميرا الايفون تصوّر افتراضيًا بترميز HEVC. صدّر المقطع من CapCut أو أي برنامج مونتاج بصيغة H.264، أو غيّر الإعداد من: الإعدادات ← الكاميرا ← التنسيقات ← الأكثر توافقًا.</p>
+        <summary>ليش بعض المقاطع تاخذ وقت؟</summary>
+        <p>إذا المقطع مو جاهز (مثل فيديو الايفون بترميز HEVC، أو 30 فريم، أو دقة أقل من 1080p) نحوّله داخل جهازك لـH.264 بـ60 فريم و1080p. التحويل ياخذ تقريبًا مدة المقطع. المقاطع الجاهزة تتجهّز فورًا.</p>
       </details>
       <details>
         <summary>هل النتيجة مضمونة؟</summary>
@@ -271,6 +272,7 @@ footer a { color: inherit; }
   </footer>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/mediabunny@1.61.3/dist/bundles/mediabunny.min.cjs"></script>
 <script>
 /*
  * tq-core.js — browser/Node port of the "tiktok-quality" MP4 container transform
@@ -805,14 +807,60 @@ footer a { color: inherit; }
   }
 
   const ERRORS = {
-    HEVC: ['الفيديو بترميز HEVC', 'هذا الترميز الافتراضي في كاميرا الايفون. صدّر المقطع من CapCut بصيغة H.264، أو غيّر الإعداد من: الإعدادات ← الكاميرا ← التنسيقات ← الأكثر توافقًا.'],
-    CODEC: ['ترميز غير مدعوم', 'صدّر المقطع من برنامج المونتاج بصيغة MP4 وترميز H.264.'],
-    CO64: ['الملف كبير جدًا أو بصيغة غير مدعومة', 'صدّر المقطع من جديد بصيغة MP4 (H.264) وبحجم أقل من 4GB.'],
-    TOO_BIG: ['الملف كبير جدًا', 'الحد الأقصى 4GB. قصّر المقطع أو خفّف الـbitrate.'],
-    NOT_MP4: ['الملف مو فيديو MP4', 'اختر ملف MP4 أو MOV.'],
-    NO_VIDEO: ['ما لقينا مسار فيديو في الملف', 'تأكد إن الملف فيديو مو صوت بس.'],
+    NO_ENCODER: ['متصفحك ما يدعم التحويل', 'حدّث جوالك لآخر نسخة iOS، أو افتح الموقع في كروم على الكمبيوتر.'],
+    DECODE: ['ما قدرنا نفتح ترميز هالمقطع', 'جرّب تفتح الموقع من متصفح ثاني، أو صدّر المقطع من برنامج المونتاج وارجع اختره.'],
+    CO64: ['الملف كبير جدًا', 'قصّر المقطع أو صدّره بحجم أقل من 4GB.'],
+    TOO_BIG: ['الملف كبير جدًا', 'الحد الأقصى 4GB. قصّر المقطع.'],
+    NOT_MP4: ['الملف مو فيديو', 'اختر مقطع فيديو من جهازك.'],
+    NO_VIDEO: ['ما لقينا فيديو داخل الملف', 'تأكد إن الملف فيديو مو صوت بس.'],
   };
-  const errorNote = (e) => { const m = ERRORS[e && e.code] || ['ما قدرنا نقرأ الملف', 'جرّب تصدّره من جديد بصيغة MP4 (H.264) وارجع اختره.']; return note('bad', m[0], m[1]); };
+  const errorNote = (e) => { const m = ERRORS[e && e.code] || ['صار خطأ أثناء التجهيز', 'جرّب مرة ثانية، وإذا تكرر جرّب متصفح ثاني.']; return note('bad', m[0], m[1]); };
+  const fail = (code) => { const e = new Error(code); e.code = code; return e; };
+
+  const MB = window.Mediabunny || null;
+  const canConvert = !!(MB && window.VideoEncoder && window.VideoDecoder);
+  const CODEC_NAMES = { avc: 'H.264', avc1: 'H.264', hevc: 'HEVC', hvc1: 'HEVC', hev1: 'HEVC', vp9: 'VP9', vp8: 'VP8', av1: 'AV1' };
+
+  // Target size: short side 1080, keep aspect, long side at most 1920, even numbers.
+  function targetSize(w, h) {
+    const portrait = h >= w;
+    const short = portrait ? w : h, long = portrait ? h : w;
+    let s = 1080, l = Math.round(long * 1080 / short);
+    if (l > 1920) { l = 1920; s = Math.round(short * 1920 / long); }
+    s -= s % 2; l -= l % 2;
+    return portrait ? { width: s, height: l } : { width: l, height: s };
+  }
+
+  // Read basic facts about any video. Uses Mediabunny when loaded (reads MOV/MP4/WebM/MKV), else the MP4 parser.
+  async function probe(file) {
+    let tq = null;
+    try { tq = await TQ.inspect(TQ.fileReader(file)); } catch (_) { /* not a plain MP4/MOV, or unusual layout */ }
+    if (MB) {
+      const input = new MB.Input({ source: new MB.BlobSource(file), formats: MB.ALL_FORMATS });
+      try {
+        const vt = await input.getPrimaryVideoTrack();
+        if (!vt) throw fail('NO_VIDEO');
+        const stats = await vt.computePacketStats(120);
+        const w = await vt.getDisplayWidth(), h = await vt.getDisplayHeight();
+        return {
+          codec: vt.codec || (tq && tq.codec) || '?',
+          width: w, height: h,
+          fps: stats.averagePacketRate || (tq ? tq.fps : 0),
+          duration: await input.computeDuration(),
+          canDecode: await vt.canDecode(),
+          tq,
+        };
+      } catch (e) {
+        if (e && e.code) throw e;
+        if (!tq) throw fail('NOT_MP4');
+      } finally { try { input.dispose(); } catch (_) {} }
+    }
+    if (!tq) throw fail('NOT_MP4');
+    return { codec: tq.codec, width: tq.width, height: tq.height, fps: tq.fps, duration: tq.duration, canDecode: true, tq };
+  }
+
+  // Already H.264, 60 fps and 1080p inside a plain MP4/MOV: no conversion needed (instant, no quality loss).
+  const isReady = (i) => !!(i.tq && i.tq.codec === 'avc1' && Math.round(i.tq.fps) >= 50 && Math.min(i.tq.width, i.tq.height) >= 1080);
 
   async function pick(file) {
     if (!file) return;
@@ -821,51 +869,93 @@ footer a { color: inherit; }
     $('fileSize').textContent = fmtMB(file.size);
     const specs = $('specs'), notes = $('notes');
     specs.replaceChildren(); notes.replaceChildren();
-    $('runBtn').disabled = true; $('runBtn').hidden = false;
-    $('progress').hidden = true;
+    $('runBtn').disabled = true;
+    $('progress').hidden = true; $('progressLabel').hidden = true;
     show('file');
     try {
-      const info = await TQ.inspect(TQ.fileReader(file));
-      state.info = info;
+      const info = await probe(file);
       const fps = Math.round(info.fps);
-      const isAvc = info.codec === 'avc1';
-      const hd = Math.min(info.width, info.height) >= 1080;
+      const ready = isReady(info);
+      const codecName = CODEC_NAMES[info.codec] || String(info.codec).toUpperCase();
       specs.append(
-        spec('الترميز', isAvc ? 'H.264' : (info.codec === 'hvc1' || info.codec === 'hev1' ? 'HEVC' : info.codec), isAvc ? 'ok' : 'bad'),
+        spec('الترميز', codecName, info.codec === 'avc' || info.codec === 'avc1' ? 'ok' : 'warn'),
         spec('الفريمات', fps + ' fps', fps >= 50 ? 'ok' : 'warn'),
-        spec('الدقة', info.width + '×' + info.height, hd ? 'ok' : 'warn'),
+        spec('الدقة', info.width + '×' + info.height, Math.min(info.width, info.height) >= 1080 ? 'ok' : 'warn'),
         spec('المدة', info.duration.toFixed(1) + ' s', null),
       );
-      if (!isAvc) { notes.appendChild(errorNote({ code: info.codec === 'hvc1' || info.codec === 'hev1' ? 'HEVC' : 'CODEC' })); return; }
-      if (fps < 50) notes.appendChild(note('warn', 'المقطع ' + fps + ' فريم', 'تقدر تكمل، بس الفرق يبان أكثر لما تصدّر المقطع بـ60 فريم من برنامج المونتاج.'));
-      if (!hd) notes.appendChild(note('warn', 'الدقة أقل من 1080p', 'للنتيجة الأفضل صدّر المقطع بدقة 1080×1920.'));
-      if (fps >= 50 && hd) notes.appendChild(note('ok', 'المقطع جاهز', 'الإعدادات مناسبة. اضغط جهّز الفيديو.'));
+      if (ready) {
+        info.mode = 'direct';
+        notes.appendChild(note('ok', 'المقطع جاهز', 'إعداداته مناسبة، فبيتجهّز فورًا بدون أي تحويل.'));
+      } else {
+        if (!canConvert) throw fail('NO_ENCODER');
+        if (!info.canDecode) throw fail('DECODE');
+        info.mode = 'convert';
+        info.target = targetSize(info.width, info.height);
+        notes.appendChild(note('ok', 'بنحوّله تلقائيًا', 'H.264 · 60fps · ' + info.target.width + '×' + info.target.height + '. خلّ الشاشة مفتوحة لين يخلص، ياخذ تقريبًا نفس مدة المقطع أو أقل.'));
+        if (fps < 50) notes.appendChild(note('warn', 'المقطع الأصلي ' + fps + ' فريم', 'بيطلع 60 فريم، بس النعومة تبقى قريبة من الأصل. أفضل نتيجة لما تصوّر بـ60 فريم.'));
+      }
+      state.info = info;
       $('runBtn').disabled = false;
     } catch (e) {
       notes.appendChild(errorNote(e));
     }
   }
 
+  async function convert(file, target, onProgress) {
+    const input = new MB.Input({ source: new MB.BlobSource(file), formats: MB.ALL_FORMATS });
+    const output = new MB.Output({ format: new MB.Mp4OutputFormat({ fastStart: 'in-memory' }), target: new MB.BufferTarget() });
+    const conv = await MB.Conversion.init({
+      input, output, showWarnings: false,
+      video: {
+        codec: 'avc', width: target.width, height: target.height, fit: 'fill',
+        frameRate: 60, bitrate: 12e6, forceTranscode: true, allowRotationMetadata: false,
+      },
+      audio: { codec: 'aac' },
+    });
+    if (!conv.isValid || !conv.utilizedTracks.some((t) => t.type === 'video')) throw fail('NO_ENCODER');
+    const audioDropped = conv.discardedTracks.some((d) => d.track && d.track.type === 'audio');
+    conv.onProgress = (p) => onProgress(p);
+    await conv.execute();
+    return { blob: new Blob([output.target.buffer], { type: 'video/mp4' }), audioDropped };
+  }
+
+  async function keepAwake() {
+    try { return navigator.wakeLock ? await navigator.wakeLock.request('screen') : null; } catch (_) { return null; }
+  }
+
   async function run() {
-    if (!state.file || !state.info) return;
+    const info = state.info;
+    if (!state.file || !info) return;
     const btn = $('runBtn');
     btn.disabled = true; btn.textContent = 'جاري التجهيز…';
-    $('progress').hidden = false;
-    const bar = $('progressBar');
+    $('progress').hidden = false; $('progressLabel').hidden = false;
+    const bar = $('progressBar'), label = $('progressLabel');
+    const setP = (p, text) => { bar.style.width = Math.round(p * 100) + '%'; label.textContent = text + ' ' + Math.round(p * 100) + '%'; };
+    const lock = await keepAwake();
+    let audioDropped = false;
     try {
-      const res = await TQ.transform(TQ.fileReader(state.file), { onProgress: (p) => { bar.style.width = Math.round(p * 100) + '%'; } });
-      bar.style.width = '100%';
-      state.blob = TQ.toBlob(state.file, res);
-      state.outName = state.file.name.replace(/\.(mp4|mov)$/i, '') + '_60fps.mp4';
+      let source = state.file;
+      if (info.mode === 'convert') {
+        setP(0, 'جاري التحويل…');
+        const r = await convert(state.file, info.target, (p) => setP(p * 0.92, 'جاري التحويل…'));
+        source = r.blob; audioDropped = r.audioDropped;
+      }
+      const base = info.mode === 'convert' ? 0.92 : 0;
+      const res = await TQ.transform(TQ.fileReader(source), { onProgress: (p) => setP(base + p * (1 - base), 'اللمسة الأخيرة…') });
+      setP(1, 'تم');
+      state.blob = TQ.toBlob(source, res);
+      state.outName = state.file.name.replace(/\.[^.]+$/, '') + '_60fps.mp4';
       $('fromFrames').textContent = fmtInt(res.stats.originalFrames);
       $('toFrames').textContent = fmtInt(res.stats.declaredFrames);
-      $('saveStatus').textContent = '';
+      $('saveStatus').textContent = audioDropped ? 'تنبيه: صوت المقطع ما انحفظ لأن متصفحك ما يدعم تحويله.' : '';
       setupShare();
       show('done');
     } catch (e) {
+      console.error(e);
       $('notes').replaceChildren(errorNote(e));
-      $('progress').hidden = true;
+      $('progress').hidden = true; $('progressLabel').hidden = true;
     } finally {
+      if (lock) try { lock.release(); } catch (_) {}
       btn.textContent = 'جهّز الفيديو';
       btn.disabled = false;
     }
