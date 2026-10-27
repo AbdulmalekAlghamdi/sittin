@@ -1,0 +1,6 @@
+artifact.html
+*.zip
+*.bundle
+*.mp4
+*.mov
+__pycache__/
