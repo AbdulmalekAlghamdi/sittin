@@ -264,7 +264,7 @@ footer a { color: inherit; }
   </footer>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/mediabunny@1.61.3/dist/bundles/mediabunny.min.cjs"></script>
+<!--__MEDIABUNNY__-->
 <script>
 /*__TQ_CORE__*/
 </script>
@@ -310,6 +310,7 @@ footer a { color: inherit; }
   }
 
   const ERRORS = {
+    LIB: ['أداة التحويل ما حمّلت', 'حدّث الصفحة وجرّب مرة ثانية. إذا تكرر، تأكد إن الإنترنت شغّال.'],
     NO_ENCODER: ['متصفحك ما يدعم التحويل', 'حدّث جوالك لآخر نسخة iOS، أو افتح الموقع في كروم على الكمبيوتر.'],
     DECODE: ['ما قدرنا نفتح ترميز هالمقطع', 'جرّب تفتح الموقع من متصفح ثاني، أو صدّر المقطع من برنامج المونتاج وارجع اختره.'],
     CO64: ['الملف كبير جدًا', 'قصّر المقطع أو صدّره بحجم أقل من 4GB.'],
@@ -390,6 +391,7 @@ footer a { color: inherit; }
         info.mode = 'direct';
         notes.appendChild(note('ok', 'المقطع جاهز', 'إعداداته مناسبة، فبيتجهّز فورًا بدون أي تحويل.'));
       } else {
+        if (!MB) throw fail('LIB');
         if (!canConvert) throw fail('NO_ENCODER');
         if (!info.canDecode) throw fail('DECODE');
         info.mode = 'convert';
